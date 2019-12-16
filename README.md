@@ -1,9 +1,5 @@
 ## How to use
 
-Add Dockerfile to your application main folder (_'server/'_).
-If you use base Dockerfile, just put it into your application main folder, ``requirements.txt`` should be in the same folder.
-In docker-compose file use standard syntax with ``command`` directive. 
-
 If you need to apply some DB migrations - use liquibase Dockerfile.
 Changelog file is required.
 
