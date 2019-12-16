@@ -26,3 +26,4 @@ RUN apk add --update --no-cache --virtual .build-deps \
     && apk del --no-cache .build-deps make git gcc musl-dev postgresql-dev libffi-dev python3-dev
 
 WORKDIR /server
+ENTRYPOINT ["/bin/sh"]
