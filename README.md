@@ -1,4 +1,5 @@
-How to use
+##How to use
+
 --
 Add Dockerfile to your application main folder (_'server/'_).
 If you use base Dockerfile, just put it into your application main folder, ``requirements.txt`` should be in the same folder.
@@ -21,7 +22,7 @@ server/
 * - if liquibase Dockerfile use
 ```
 
-#####Docker-compose file for liquibase Dockerfile:
+##### Docker-compose file for liquibase Dockerfile:
 
 Use ``args`` in ``build`` directive to configurate liquibase docker.
 To be able to execute multiple commands in ``command`` directive, use multiline syntax (since the entrypoint of container is set to the '/bin/sh', you should indicate directly ``-c`` flag for mulriline commands.)
@@ -55,7 +56,8 @@ services:
 
 ```
 
-#####Required arguments for building a container
+##### Required arguments for building a container
+
 arg | means
 ----|-------
 POSTGRESQL_DRIVER_VERSION | postgresql-42.2.9 (driver for liquibase, download from official site)
@@ -67,7 +69,8 @@ POSTGRES_PASSWORD| password
 CHANGELOG_FILE| changelog.xml (see example below)
 
 
-#####changeog.xml file example
+##### changeog.xml file example
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <databaseChangeLog
