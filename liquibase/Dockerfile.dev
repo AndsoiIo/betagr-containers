@@ -1,0 +1,90 @@
+FROM python:3.7.5-alpine
+
+WORKDIR /server
+
+ADD ./migrations/ /server/migrations
+
+# java for liquibase
+RUN apk add --update --no-cache --virtual .build-deps \
+    && apk add bash \
+    && apk add openjdk8-jre \
+    && apk add java-postgresql-jdbc \
+    && apk del --no-cache .build-deps
+
+ENV JAVA_HOME=/usr/local/share/jdk-8
+ENV PATH="$JAVA_HOME/bin:${PATH}"
+
+# liquibase install
+RUN wget -O liquibase-3.8.2-bin.tar.gz "https://github.com/liquibase/liquibase/releases/download/v3.8.2/liquibase-3.8.2.tar.gz" \
+    && mkdir /opt/liquibase \
+	&& tar -xf liquibase-3.8.2-bin.tar.gz -C /opt/liquibase \
+	&& rm -f liquibase-3.8.2-bin.tar.gz \
+	&& chmod +x /opt/liquibase/liquibase \
+	&& ln -s /opt/liquibase/liquibase /usr/local/bin/
+
+# make liquibase.properties file
+ARG POSTGRESQL_DRIVER_VERSION
+ENV POSTGRESQL_DRIVER_VERSION=${POSTGRESQL_DRIVER_VERSION:-postgresql-42.2.9}
+
+ARG POSTGRES_HOST
+ENV POSTGRES_HOST=${POSTGRES_HOST:-localhost}
+
+ARG POSTGRES_PORT
+ENV POSTGRES_PORT=${POSTGRES_PORT:-5432}
+
+ARG POSTGRES_DB
+ENV POSTGRES_DB=${POSTGRES_DB:-db}
+
+ARG POSTGRES_USER
+ENV POSTGRES_USER=${POSTGRES_USER:-admin}
+
+ARG POSTGRES_PASSWORD
+ENV POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-admin}
+
+ARG CHANGELOG_FILE
+ENV CHANGELOG_FILE=${CHANGELOG_FILE:-changelog.xml}
+
+COPY ${CHANGELOG_FILE} /server
+
+#postgresql driver download
+RUN echo -e "\e[0;32m\npostgres driver url: https://jdbc.postgresql.org/download/${POSTGRESQL_DRIVER_VERSION}.jar\n\e[m" \
+    && wget -P /server/ "https://jdbc.postgresql.org/download/${POSTGRESQL_DRIVER_VERSION}.jar" \
+    && if [ ! -f /server/${POSTGRESQL_DRIVER_VERSION}.jar ]; \
+        then (echo -e "\n\e[0;31mError: ${POSTGRESQL_DRIVER_VERSION}.jar file not found\e[m\ndid you indicate the right POSTGRESQL_DRIVER_VERSION env?"); \
+    fi;
+
+# create liquibase.properties file
+RUN touch /server/liquibase.properties \
+    && echo -e "driver: org.postgresql.Driver\n\
+classpath: ${POSTGRESQL_DRIVER_VERSION}.jar\n\
+url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}\n\
+username: ${POSTGRES_USER}\n\
+password: ${POSTGRES_PASSWORD}\n\
+changeLogFile: changelog.xml" > liquibase.properties \
+    && echo -e "\n\e[0;32m$(cat /server/liquibase.properties)\e[m\n"
+
+WORKDIR /server
+COPY ./server /server
+
+# if requiremets.txt not found break docker build
+RUN if [ ! -f requirements.txt ]; \
+    then (echo -e "\n\e[0;31mError: requirements.txt file not found\e[m\nplease make sure that the requirements.txt file is exist at \e[0;32mapp/server/\e[m folder\n" \
+          && exit 1) \
+    fi;
+
+# prepear python-alpine to psycog and requirements packages
+RUN apk update && apk add libpq
+RUN apk add --update --no-cache --virtual .build-deps \
+    git \
+    make \
+    gcc \
+    python3-dev \
+    musl-dev \
+    postgresql-dev \
+    libffi-dev \
+    && pip install --no-binary :all: psycopg2 \
+    && echo -e '\n\e[0;32mrequirements installing ...\e[m\n' \
+    && pip install --no-cache-dir -r requirements.txt \
+    && apk del --no-cache .build-deps make git gcc musl-dev postgresql-dev libffi-dev python3-dev
+
+WORKDIR /server

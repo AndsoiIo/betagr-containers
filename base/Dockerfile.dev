@@ -1,0 +1,28 @@
+FROM python:3.7.5-alpine
+
+WORKDIR /server
+
+COPY ./server /server
+
+# if requiremets.txt not found break docker build
+RUN if [ ! -f requirements.txt ]; \
+    then (echo -e "\n\e[0;31mError: requirements.txt file not found\e[m\nplease make sure that the requirements.txt file is exist at \e[0;32mapp/server/\e[m folder\n" \
+          && exit 1) \
+    fi;
+
+# prepear python-alpine to psycog and requirements packages
+RUN apk update && apk add libpq
+RUN apk add --update --no-cache --virtual .build-deps \
+    git \
+    make \
+    gcc \
+    python3-dev \
+    musl-dev \
+    postgresql-dev \
+    libffi-dev \
+    && pip install --no-binary :all: psycopg2 \
+    && echo -e '\n\e[0;32mrequirements installing ...\e[m\n' \
+    && pip install --no-cache-dir -r requirements.txt \
+    && apk del --no-cache .build-deps make git gcc musl-dev postgresql-dev libffi-dev python3-dev
+
+WORKDIR /server
